@@ -1,0 +1,8 @@
+{
+  "app_name_en": "deskRemote",
+  "app_name_ko": "에스에이치원격",
+  "description": "deskRemote Remote Support (based on RustDesk)",
+  "bundle_identifier": "com.shcom.deskremote",
+  "server_host": "",
+  "server_key": ""
+}
