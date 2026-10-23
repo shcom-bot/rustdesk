@@ -10,6 +10,13 @@ RustDesk copyright notices and LICENCE are intentionally NOT touched (AGPL-3.0).
 """
 import json, os, re, sys
 
+# Windows CI consoles use cp1252 and crash on Korean text -> force UTF-8 output
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 ROOT = os.getcwd()
 HERE = os.path.dirname(os.path.abspath(__file__))
 cfg = json.load(open(os.path.join(HERE, "config.json"), encoding="utf-8"))
