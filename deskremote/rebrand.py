@@ -50,16 +50,26 @@ def edit(rel, pairs, regex=False, required=True):
 # 1) App name (default value) + optional server settings: hbb_common is a submodule
 edit("libs/hbb_common/src/config.rs",
      [('RwLock::new("RustDesk".to_owned())', f'RwLock::new("{EN}".to_owned())')])
-if cfg.get("server_host"):
-    edit("libs/hbb_common/src/config.rs",
-         [(r'RENDEZVOUS_SERVERS: &\[&str\] = &\[[^\]]*\];',
-           f'RENDEZVOUS_SERVERS: &[&str] = &["{cfg["server_host"]}"];')], regex=True)
-    if cfg.get("server_key"):
+# Server settings: environment variables (GitHub Secrets) win over config.json.
+# NEVER commit real values to a public repository.
+host = os.environ.get("DESKREMOTE_SERVER_HOST", "").strip() or cfg.get("server_host", "").strip()
+key = os.environ.get("DESKREMOTE_SERVER_KEY", "").strip() or cfg.get("server_key", "").strip()
+if host or key:
+    if not (host and key):
+        failed.append("server host and key must be set together")
+    elif not re.fullmatch(r"[A-Za-z0-9.\-]+(:[0-9]{1,5})?", host):
+        failed.append("server host has invalid characters")
+    elif not re.fullmatch(r"[A-Za-z0-9+/]{30,60}={0,2}", key):
+        failed.append("server key has invalid format")
+    else:
         edit("libs/hbb_common/src/config.rs",
-             [(r'RS_PUB_KEY: &str = "[^"]*";',
-               f'RS_PUB_KEY: &str = "{cfg["server_key"]}";')], regex=True)
+             [(r'RENDEZVOUS_SERVERS: &\[&str\] = &\[[^\]]*\];',
+               f'RENDEZVOUS_SERVERS: &[&str] = &["{host}"];'),
+              (r'RS_PUB_KEY: &str = "[^"]*";',
+               f'RS_PUB_KEY: &str = "{key}";')], regex=True)
+        print("custom server applied (values hidden)")
 else:
-    print("WARNING: server_host is empty -> client will use RustDesk public servers (test only).")
+    print("WARNING: no server configured -> client will use RustDesk public servers (test only).")
 
 # 2) Windows file properties
 edit("Cargo.toml", [
@@ -71,6 +81,16 @@ edit("Cargo.toml", [
 edit("flutter/windows/runner/Runner.rc", [
     ('"FileDescription", "RustDesk Remote Desktop"', f'"FileDescription", "{cfg["description"]}"'),
     ('"ProductName", "RustDesk"', f'"ProductName", "{EN}"'),
+])
+
+# 2b) Installer fix: the build output is rustdesk.exe, but the installer launches
+#     "<app name>.exe". Add the missing rename step to the install flow (the update
+#     flow already has it).
+edit("src/platform/windows.rs", [
+    ("{copy_exe}\nreg add {subkey} /f\nreg add {subkey} /f /v DisplayIcon",
+     "{copy_exe}\n{rename_exe}\nreg add {subkey} /f\nreg add {subkey} /f /v DisplayIcon"),
+    ("        copy_exe = copy_exe_cmd(&src_exe, &exe, &path)?,\n        import_config = get_import_config(&exe),",
+     "        copy_exe = copy_exe_cmd(&src_exe, &exe, &path)?,\n        rename_exe = rename_exe_cmd(&src_exe, &path)?,\n        import_config = get_import_config(&exe),"),
 ])
 
 # 3) UI strings (Korean / English)
