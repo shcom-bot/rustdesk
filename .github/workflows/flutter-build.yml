@@ -183,6 +183,9 @@ jobs:
 
       - name: Rebrand to deskRemote
         shell: bash
+        env:
+          DESKREMOTE_SERVER_HOST: ${{ secrets.DESKREMOTE_SERVER_HOST }}
+          DESKREMOTE_SERVER_KEY: ${{ secrets.DESKREMOTE_SERVER_KEY }}
         run: |
           python -m pip install pillow
           python deskremote/rebrand.py
@@ -433,7 +436,7 @@ jobs:
           python3 ./generate.py -f ../../rustdesk/ -o . -e ../../rustdesk/rustdesk.exe
           popd
           mkdir -p ./SignOutput
-          mv ./target/release/rustdesk-portable-packer.exe ./SignOutput/deskRemote-${{ env.VERSION }}-${{ matrix.job.arch }}.exe
+          mv ./target/release/rustdesk-portable-packer.exe ./SignOutput/deskRemote-${{ env.VERSION }}-${{ matrix.job.arch }}-install.exe
 
       - name: Add MSBuild to PATH
         if: ${{ false }}
@@ -519,7 +522,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: windows-flutter-${{ matrix.job.arch }}-exe
-          path: ./SignOutput/deskRemote-${{ env.VERSION }}-${{ matrix.job.arch }}.exe
+          path: ./SignOutput/deskRemote-${{ env.VERSION }}-${{ matrix.job.arch }}-install.exe
           if-no-files-found: error
 
       - name: Upload signed Windows Flutter MSI
